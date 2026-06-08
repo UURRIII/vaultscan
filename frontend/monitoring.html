@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Monitoring — VaultScan</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Vault<span>Scan</span></div>
+      <div class="logo-sub">SECURITY SCANNER</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" href="/">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2V2zm0 7h5v5H2V9zm7-7h5v5H9V2zm0 7h5v5H9V9z"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item active" href="/monitoring.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 4a.75.75 0 0 1 .75.75V8h2.25a.75.75 0 0 1 0 1.5h-3A.75.75 0 0 1 7.25 8.75v-4A.75.75 0 0 1 8 4z"/></svg>
+        Monitoring
+        <span class="alert-dot" id="nav-alert-dot" style="display:none"></span>
+      </a>
+      <a class="nav-item" href="/api/docs" target="_blank" style="margin-top:auto">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75A2.75 2.75 0 0 1 5.75 0h7.5a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2H5.75a1.25 1.25 0 0 0 0 2.5h.75a.75.75 0 0 1 0 1.5h-.75A2.75 2.75 0 0 1 3 13.25V2.75z"/></svg>
+        API Docs
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Monitoring</span>
+      <button class="btn btn-primary btn-sm" onclick="openNewSchedule()">+ Schedule a scan</button>
+    </div>
+
+    <div class="content">
+      <!-- Alerts -->
+      <div class="card" style="margin-bottom:1.25rem">
+        <div class="section-header" style="margin-bottom:1rem">
+          <span class="section-title">Alerts</span>
+          <button class="btn btn-ghost btn-sm" onclick="markAllRead()">Mark all read</button>
+        </div>
+        <div id="alerts-list"><div style="color:var(--muted)">Loading…</div></div>
+      </div>
+
+      <!-- Schedules -->
+      <div class="card">
+        <div class="section-header" style="margin-bottom:1rem">
+          <span class="section-title">Scheduled Scans</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadAll()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Target</th><th>Mode</th><th>Every</th><th>Last run</th><th>Next run</th><th>Status</th><th></th></tr></thead>
+            <tbody id="sched-body"><tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem">Loading…</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Schedule Modal -->
+<div class="modal-overlay" id="sched-modal">
+  <div class="modal">
+    <div class="modal-title">Schedule a recurring scan</div>
+    <div id="sched-alert" style="display:none;padding:0.7rem 1rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:var(--c-crit);font-size:0.83rem;margin-bottom:1rem"></div>
+    <div class="form-group">
+      <label>TARGET</label>
+      <input type="text" id="s-target" placeholder="example.com" autocomplete="off">
+    </div>
+    <div class="form-group">
+      <label>FREQUENCY</label>
+      <select id="s-interval" class="diff-select">
+        <option value="60">Every hour</option>
+        <option value="360">Every 6 hours</option>
+        <option value="720">Every 12 hours</option>
+        <option value="1440" selected>Daily</option>
+        <option value="10080">Weekly</option>
+        <option value="1">Every minute (demo)</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>MODE</label>
+      <div class="mode-toggle">
+        <button type="button" class="mode-opt active" data-mode="safe" onclick="selMode('safe')"><span class="mode-name">🛡 Safe</span><span class="mode-desc">Passive recon</span></button>
+        <button type="button" class="mode-opt" data-mode="aggressive" onclick="selMode('aggressive')"><span class="mode-name">⚡ Aggressive</span><span class="mode-desc">Active tests</span></button>
+      </div>
+      <div id="s-warn" style="display:none;margin-top:0.6rem;font-size:0.78rem;color:var(--c-high)">⚠ Only schedule aggressive scans against targets you own or are authorized to test.</div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem">
+      <button class="btn btn-ghost" onclick="closeM()">Cancel</button>
+      <button class="btn btn-primary" onclick="createSchedule()" id="s-create">Create</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+  if (!requireAuth()) throw 'no auth';
+  let sMode = 'safe';
+  function selMode(m) {
+    sMode = m;
+    document.querySelectorAll('.mode-opt').forEach(b => b.classList.toggle('active', b.dataset.mode === m));
+    document.getElementById('s-warn').style.display = m === 'aggressive' ? 'block' : 'none';
+  }
+  function openNewSchedule() { document.getElementById('sched-modal').classList.add('open'); }
+  function closeM() { document.getElementById('sched-modal').classList.remove('open'); }
+
+  const LEVEL_ICON = { critical: '🔴', warning: '🟠', info: '🔵' };
+
+  async function loadAll() {
+    const [alerts, scheds] = await Promise.all([API.get('/api/alerts'), API.get('/api/schedules')]);
+    renderAlerts(alerts);
+    renderSchedules(scheds);
+  }
+
+  function renderAlerts(alerts) {
+    const el = document.getElementById('alerts-list');
+    if (!alerts.length) { el.innerHTML = '<div style="color:var(--muted2);font-size:0.85rem">No alerts yet. Schedule a scan to start monitoring.</div>'; return; }
+    el.innerHTML = alerts.map(a => `
+      <div class="alert-row ${a.is_read ? '' : 'unread'}">
+        <span class="alert-ico">${LEVEL_ICON[a.level] || '⚪'}</span>
+        <div style="flex:1">
+          <div class="alert-msg">${escHtml(a.message)}</div>
+          <div class="alert-meta">${a.scan_id ? `<a href="/scan.html?id=${a.scan_id}" style="color:var(--accent2)">scan #${a.scan_id}</a> · ` : ''}${timeAgo(a.created_at)}</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="delAlert(${a.id})">✕</button>
+      </div>
+    `).join('');
+  }
+
+  function renderSchedules(scheds) {
+    const body = document.getElementById('sched-body');
+    if (!scheds.length) { body.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:1.5rem">No schedules. Click "Schedule a scan".</td></tr>'; return; }
+    const freq = m => m < 60 ? m + 'm' : m < 1440 ? (m/60) + 'h' : m < 10080 ? (m/1440) + 'd' : (m/10080) + 'w';
+    body.innerHTML = scheds.map(s => `
+      <tr>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:0.85rem">${escHtml(s.target)}</td>
+        <td><span class="mode-badge ${s.mode}">${s.mode === 'aggressive' ? '⚡' : '🛡'} ${s.mode}</span></td>
+        <td style="color:var(--muted)">${freq(s.interval_minutes)}</td>
+        <td style="color:var(--muted);font-size:0.82rem">${s.last_run ? timeAgo(s.last_run) : '—'}</td>
+        <td style="color:var(--muted);font-size:0.82rem">${s.next_run ? timeAgo(s.next_run) : 'soon'}</td>
+        <td>${s.enabled ? '<span style="color:var(--c-ok)">● active</span>' : '<span style="color:var(--muted)">paused</span>'}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <button class="btn btn-ghost btn-sm" onclick="toggleSched(${s.id})">${s.enabled ? 'Pause' : 'Resume'}</button>
+          <button class="btn btn-danger btn-sm" onclick="delSched(${s.id})">✕</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  async function createSchedule() {
+    const target = document.getElementById('s-target').value.trim();
+    const interval = parseInt(document.getElementById('s-interval').value);
+    if (!target) return;
+    const btn = document.getElementById('s-create'); btn.disabled = true;
+    try {
+      await API.post('/api/schedules', { target, mode: sMode, interval_minutes: interval });
+      closeM(); document.getElementById('s-target').value = ''; loadAll();
+    } catch (e) {
+      const al = document.getElementById('sched-alert'); al.textContent = e.message; al.style.display = 'block';
+    } finally { btn.disabled = false; }
+  }
+
+  async function toggleSched(id) { await API.patch(`/api/schedules/${id}`); loadAll(); }
+  async function delSched(id) { if (confirm('Delete this schedule?')) { await API.del(`/api/schedules/${id}`); loadAll(); } }
+  async function delAlert(id) { await API.del(`/api/alerts/${id}`); loadAll(); }
+  async function markAllRead() { await API.post('/api/alerts/read_all', {}); loadAll(); }
+
+  document.getElementById('sched-modal').addEventListener('click', e => { if (e.target.id === 'sched-modal') closeM(); });
+
+  loadAll();
+  setInterval(loadAll, 15000);
+</script>
+</body>
+</html>

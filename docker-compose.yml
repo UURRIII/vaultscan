@@ -1,0 +1,32 @@
+services:
+  vaultscan:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      # Change these in production.
+      VAULTSCAN_SECRET: "change-me-to-a-long-random-string"
+      VAULTSCAN_ADMIN_EMAIL: "admin@vaultscan.local"
+      VAULTSCAN_ADMIN_PASSWORD: "changeme123"
+      # AI Analyst talks to the Ollama service below.
+      OLLAMA_URL: "http://ollama:11434"
+      VAULTSCAN_AI_MODEL: "llama3.1:8b"
+    volumes:
+      - vaultscan-db:/data
+    depends_on:
+      - ollama
+    restart: unless-stopped
+
+  # Local LLM for the AI Analyst (free, private). After first start, pull the model:
+  #   docker compose exec ollama ollama pull llama3.1:8b
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    restart: unless-stopped
+
+volumes:
+  vaultscan-db:
+  ollama-data:

@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scan — VaultScan</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Vault<span>Scan</span></div>
+      <div class="logo-sub">SECURITY SCANNER</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item" href="/">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2V2zm0 7h5v5H2V9zm7-7h5v5H9V2zm0 7h5v5H9V9z"/></svg>
+        Dashboard
+      </a>
+      <a class="nav-item active" href="#">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 1 1 0 16A8 8 0 0 1 8 0zM1.5 8a6.5 6.5 0 1 0 13 0 6.5 6.5 0 0 0-13 0zm7-3.25v2.5l2.25 2.25a.75.75 0 0 1-1.06 1.06L7.22 8.03A.75.75 0 0 1 7 7.5v-2.75a.75.75 0 0 1 1.5 0z"/></svg>
+        Scan Results
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <div style="display:flex;align-items:center;gap:1rem">
+        <a href="/" style="color:var(--muted);text-decoration:none;font-size:0.83rem">← Dashboard</a>
+        <span style="color:var(--border2)">|</span>
+        <span class="topbar-title" id="topbar-target">Loading...</span>
+        <span class="mode-badge" id="mode-badge" style="display:none"></span>
+        <span id="topbar-status"></span>
+      </div>
+      <div style="display:flex;gap:0.5rem" id="export-group">
+        <a class="btn btn-primary btn-sm" id="report-btn" target="_blank" style="display:none">↓ PDF Report</a>
+        <a class="btn btn-ghost btn-sm" id="json-btn" style="display:none">JSON</a>
+        <a class="btn btn-ghost btn-sm" id="csv-btn" style="display:none">CSV</a>
+      </div>
+    </div>
+
+    <div class="content">
+      <div class="two-col">
+
+        <!-- Left: progress -->
+        <div>
+          <div class="risk-panel" id="risk-panel" style="display:none">
+            <div class="grade-badge lg" id="risk-grade">—</div>
+            <div class="risk-meta">
+              <div class="risk-score-val" id="risk-score-text">Risk —/100</div>
+              <div class="risk-bar"><div id="risk-bar-fill" style="width:0%"></div></div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-bottom:1rem">
+            <div style="margin-bottom:1rem">
+              <div class="section-title" style="margin-bottom:0.75rem">Scan Progress</div>
+              <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-fill" style="width:0%"></div></div>
+              <div style="font-size:0.75rem;color:var(--muted);margin-top:0.4rem" id="progress-label">Initializing...</div>
+            </div>
+            <div class="module-list" id="module-list"></div>
+          </div>
+
+          <div class="card" id="summary-card" style="display:none">
+            <div class="section-title" style="margin-bottom:1rem">Summary</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.75rem">
+              <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:6px">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--c-crit)" id="s-crit">0</div>
+                <div style="font-size:0.72rem;color:var(--muted)">CRITICAL</div>
+              </div>
+              <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:6px">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--c-high)" id="s-high">0</div>
+                <div style="font-size:0.72rem;color:var(--muted)">HIGH</div>
+              </div>
+              <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:6px">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--c-med)" id="s-med">0</div>
+                <div style="font-size:0.72rem;color:var(--muted)">MEDIUM</div>
+              </div>
+              <div style="text-align:center;padding:0.75rem;background:var(--surface2);border-radius:6px">
+                <div style="font-size:1.5rem;font-weight:700;color:var(--c-low)" id="s-low">0</div>
+                <div style="font-size:0.72rem;color:var(--muted)">LOW</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card" style="margin-top:1rem">
+            <div class="section-title" style="margin-bottom:0.75rem">Notes & Tags</div>
+            <div class="form-group" style="margin-bottom:0.75rem">
+              <input type="text" id="tags-input" placeholder="tags, comma-separated" autocomplete="off">
+            </div>
+            <textarea id="notes-input" rows="4" placeholder="Assessment notes (saved with the report)..."></textarea>
+            <button class="btn btn-ghost btn-sm" onclick="saveMeta()" id="save-meta-btn" style="margin-top:0.5rem">Save</button>
+            <span id="save-status" style="font-size:0.75rem;color:var(--c-ok);margin-left:0.5rem"></span>
+          </div>
+        </div>
+
+        <!-- Right: findings -->
+        <div>
+          <div class="filter-tabs" id="filter-tabs" style="display:none">
+            <button class="filter-tab active" onclick="filterFindings('ALL', this)">All</button>
+            <button class="filter-tab" onclick="filterFindings('CRITICAL', this)" style="color:var(--c-crit)">Critical</button>
+            <button class="filter-tab" onclick="filterFindings('HIGH', this)" style="color:var(--c-high)">High</button>
+            <button class="filter-tab" onclick="filterFindings('MEDIUM', this)" style="color:var(--c-med)">Medium</button>
+            <button class="filter-tab" onclick="filterFindings('LOW', this)" style="color:var(--c-low)">Low</button>
+            <button class="filter-tab" onclick="filterFindings('INFO', this)">Info</button>
+          </div>
+          <div id="findings-list">
+            <div class="empty">
+              <div class="empty-icon">◎</div>
+              <div class="empty-title">Waiting for results</div>
+              <div class="empty-sub">Findings will appear here as modules complete.</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- AI Analyst -->
+      <div class="card ai-panel" id="ai-panel" style="display:none;margin-top:1.25rem">
+        <div class="ai-head">
+          <div style="display:flex;align-items:center;gap:0.6rem">
+            <span class="ai-spark">✦</span>
+            <span class="section-title">AI Analyst</span>
+            <span class="ai-model" id="ai-model"></span>
+          </div>
+          <button class="btn btn-primary btn-sm" id="ai-generate-btn" onclick="generateAnalysis()">
+            Generate Analysis
+          </button>
+        </div>
+
+        <div id="ai-unavailable" style="display:none" class="ai-notice">
+          <strong>AI Analyst is off.</strong> It runs a local model via Ollama — free, private, no API key.
+          Start it with:
+          <pre>brew install ollama
+ollama serve
+ollama pull llama3.1:8b</pre>
+        </div>
+
+        <div id="ai-output" class="ai-output" style="display:none"></div>
+
+        <div id="ai-chat" style="display:none">
+          <div class="ai-chat-log" id="ai-chat-log"></div>
+          <div class="ai-chat-input">
+            <input type="text" id="ai-chat-box" placeholder="Ask about this scan… e.g. what should I fix first?" autocomplete="off">
+            <button class="btn btn-primary btn-sm" id="ai-send-btn" onclick="sendChat()">Send</button>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
+<script src="/static/js/api.js"></script>
+<script>
+  if (!requireAuth()) throw 'no auth';
+  const scanId = new URLSearchParams(location.search).get('id');
+  if (!scanId) location.href = '/';
+
+  const MODULES_SAFE = [
+    'Crawler', 'WHOIS', 'DNS', 'SSL / TLS', 'TLS Ciphers', 'Ports', 'Subdomains',
+    'Takeover', 'Technologies', 'CMS', 'WAF', 'HTTP Headers', 'HTTP Methods',
+    'Cookies', 'CSRF', 'Clickjacking', 'GraphQL', 'JS Libraries', 'JWT',
+    'Directories', 'Sensitive Files', 'Robots / Sitemap', 'CORS', 'Open Redirect',
+    'JS Secrets', 'Email Harvest', 'security.txt', 'Info Disclosure', 'CVE Intelligence'
+  ];
+  const MODULES_ACTIVE = ['XSS (active)', 'SQLi (active)', 'LFI (active)', 'SSRF (active)',
+    'CRLF (active)', 'Host Header', 'IDOR (active)', 'Default Creds'];
+  let MODULES_DEF = [...MODULES_SAFE];
+
+  let findings = [];
+  let activeFilter = 'ALL';
+  let moduleStates = {};
+  let doneModules = 0;
+  let scanDone = false;
+
+  MODULES_DEF.forEach(m => { moduleStates[m] = 'pending'; });
+
+  function showExports() {
+    const t = encodeURIComponent(API.token() || '');
+    document.getElementById('report-btn').href = `/api/scans/${scanId}/report?token=${t}`;
+    document.getElementById('json-btn').href = `/api/scans/${scanId}/export.json?token=${t}`;
+    document.getElementById('csv-btn').href = `/api/scans/${scanId}/export.csv?token=${t}`;
+    ['report-btn', 'json-btn', 'csv-btn'].forEach(id =>
+      document.getElementById(id).style.display = 'inline-flex');
+  }
+
+  // ── AI Analyst ──
+  let aiChatHistory = [];
+
+  async function setupAI() {
+    document.getElementById('ai-panel').style.display = 'block';
+    try {
+      const st = await API.get('/api/ai/status');
+      document.getElementById('ai-model').textContent = st.model;
+      if (!st.available) {
+        document.getElementById('ai-unavailable').style.display = 'block';
+        document.getElementById('ai-generate-btn').disabled = true;
+      }
+    } catch {
+      document.getElementById('ai-unavailable').style.display = 'block';
+    }
+  }
+
+  function renderMarkdown(el, text) {
+    el.innerHTML = (window.marked ? marked.parse(text) : text.replace(/\n/g, '<br>'));
+  }
+
+  // Stream a POST SSE endpoint, calling onEvent for each {type,...} payload.
+  async function streamSSE(url, body, onEvent) {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: API.authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify(body || {}),
+    });
+    if (!res.ok || !res.body) throw new Error('Stream failed');
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    while (true) {
+      const { value, done } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const parts = buffer.split('\n\n');
+      buffer = parts.pop();
+      for (const part of parts) {
+        const line = part.split('\n').find(l => l.startsWith('data: '));
+        if (line) { try { onEvent(JSON.parse(line.slice(6))); } catch {} }
+      }
+    }
+  }
+
+  async function generateAnalysis() {
+    const btn = document.getElementById('ai-generate-btn');
+    const out = document.getElementById('ai-output');
+    btn.disabled = true;
+    btn.textContent = 'Analyzing…';
+    out.style.display = 'block';
+    out.innerHTML = '<span class="ai-cursor">▍</span>';
+    let text = '';
+    try {
+      await streamSSE(`/api/scans/${scanId}/ai/analyze`, {}, ev => {
+        if (ev.type === 'text') { text += ev.delta; renderMarkdown(out, text + ' ▍'); out.scrollTop = out.scrollHeight; }
+        else if (ev.type === 'done') { renderMarkdown(out, text); document.getElementById('ai-chat').style.display = 'block'; }
+        else if (ev.type === 'error') { out.innerHTML = `<div class="ai-error">${escHtml(ev.message)}</div>`; }
+      });
+    } catch (e) {
+      out.innerHTML = `<div class="ai-error">${escHtml(e.message)}</div>`;
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Regenerate';
+    }
+  }
+
+  async function sendChat() {
+    const box = document.getElementById('ai-chat-box');
+    const q = box.value.trim();
+    if (!q) return;
+    box.value = '';
+    const log = document.getElementById('ai-chat-log');
+    log.insertAdjacentHTML('beforeend', `<div class="ai-msg ai-user">${escHtml(q)}</div>`);
+    const answer = document.createElement('div');
+    answer.className = 'ai-msg ai-assistant';
+    answer.innerHTML = '<span class="ai-cursor">▍</span>';
+    log.appendChild(answer);
+    log.scrollTop = log.scrollHeight;
+
+    document.getElementById('ai-send-btn').disabled = true;
+    let text = '';
+    try {
+      await streamSSE(`/api/scans/${scanId}/ai/chat`, { question: q, history: aiChatHistory }, ev => {
+        if (ev.type === 'text') { text += ev.delta; renderMarkdown(answer, text + ' ▍'); log.scrollTop = log.scrollHeight; }
+        else if (ev.type === 'done') { renderMarkdown(answer, text); }
+        else if (ev.type === 'error') { answer.innerHTML = `<div class="ai-error">${escHtml(ev.message)}</div>`; }
+      });
+      aiChatHistory.push({ role: 'user', content: q }, { role: 'assistant', content: text });
+    } catch (e) {
+      answer.innerHTML = `<div class="ai-error">${escHtml(e.message)}</div>`;
+    } finally {
+      document.getElementById('ai-send-btn').disabled = false;
+    }
+  }
+
+  function showRisk(score, grade) {
+    if (!grade) return;
+    const panel = document.getElementById('risk-panel');
+    panel.style.display = 'flex';
+    const gradeEl = document.getElementById('risk-grade');
+    gradeEl.textContent = grade;
+    gradeEl.style.background = GRADE_COLOR[grade] || '#64748b';
+    document.getElementById('risk-score-text').textContent = `Risk ${score}/100`;
+    const fill = document.getElementById('risk-bar-fill');
+    fill.style.width = score + '%';
+    fill.style.background = GRADE_COLOR[grade] || '#64748b';
+  }
+
+  function loadMeta(scan) {
+    document.getElementById('tags-input').value = scan.tags || '';
+    document.getElementById('notes-input').value = scan.notes || '';
+  }
+
+  async function saveMeta() {
+    const btn = document.getElementById('save-meta-btn');
+    btn.disabled = true;
+    try {
+      await API.patch(`/api/scans/${scanId}`, {
+        tags: document.getElementById('tags-input').value,
+        notes: document.getElementById('notes-input').value,
+      });
+      const st = document.getElementById('save-status');
+      st.textContent = '✓ Saved';
+      setTimeout(() => st.textContent = '', 2000);
+    } finally {
+      btn.disabled = false;
+    }
+  }
+
+  function setupMode(mode) {
+    MODULES_DEF = mode === 'aggressive' ? [...MODULES_SAFE, ...MODULES_ACTIVE] : [...MODULES_SAFE];
+    moduleStates = {};
+    MODULES_DEF.forEach(m => { moduleStates[m] = 'pending'; });
+    const badge = document.getElementById('mode-badge');
+    if (badge) {
+      badge.className = `mode-badge ${mode}`;
+      badge.textContent = mode === 'aggressive' ? '⚡ AGGRESSIVE' : '🛡 SAFE';
+      badge.style.display = 'inline-block';
+    }
+  }
+
+  // Load existing scan data first (handles page refresh on a finished scan)
+  async function loadExistingScan() {
+    try {
+      const scan = await API.get(`/api/scans/${scanId}`);
+      document.getElementById('topbar-target').textContent = scan.target;
+      document.title = `${scan.target} — VaultScan`;
+      setupMode(scan.mode || 'safe');
+      loadMeta(scan);
+
+      if (scan.status === 'done' || scan.status === 'error') {
+        scanDone = true;
+        findings = scan.findings || [];
+        MODULES_DEF.forEach(m => { moduleStates[m] = 'done'; });
+        doneModules = MODULES_DEF.length;
+        renderModules();
+        renderFindings();
+        renderSummary();
+        showRisk(scan.risk_score, scan.risk_grade);
+        document.getElementById('topbar-status').innerHTML = statusBadge(scan.status);
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('progress-label').textContent = 'Scan complete';
+        document.getElementById('summary-card').style.display = 'block';
+        if (findings.length) document.getElementById('filter-tabs').style.display = 'flex';
+        showExports();
+        setupAI();
+        return true;
+      }
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function connectWS() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const ws = new WebSocket(`${proto}://${location.host}/ws/scan/${scanId}`);
+    ws.onopen = () => { document.getElementById('topbar-status').innerHTML = statusBadge('running'); };
+    ws.onmessage = (e) => handleEvent(JSON.parse(e.data));
+    ws.onclose = () => {
+      if (!scanDone) {
+        document.getElementById('topbar-status').innerHTML = statusBadge('error');
+        document.getElementById('progress-label').textContent = 'Connection lost';
+      }
+    };
+  }
+
+  function handleEvent(event) {
+    switch (event.type) {
+      case 'module_start':
+        moduleStates[event.module] = 'running';
+        renderModules();
+        document.getElementById('progress-label').textContent = `Running: ${event.module}`;
+        break;
+      case 'module_done':
+        moduleStates[event.module] = 'done';
+        doneModules++;
+        renderModules();
+        document.getElementById('progress-fill').style.width =
+          Math.round((doneModules / MODULES_DEF.length) * 100) + '%';
+        break;
+      case 'module_error':
+        moduleStates[event.module] = 'error';
+        renderModules();
+        break;
+      case 'finding':
+        findings.push(event.finding);
+        document.getElementById('filter-tabs').style.display = 'flex';
+        renderFindings();
+        renderSummary();
+        break;
+      case 'scan_done':
+        scanDone = true;
+        document.getElementById('topbar-status').innerHTML = statusBadge('done');
+        document.getElementById('progress-fill').style.width = '100%';
+        document.getElementById('progress-label').textContent = `Scan complete — ${findings.length} findings`;
+        document.getElementById('summary-card').style.display = 'block';
+        if (event.risk) showRisk(event.risk.score, event.risk.grade);
+        showExports();
+        setupAI();
+        break;
+      case 'scan_error':
+        document.getElementById('topbar-status').innerHTML = statusBadge('error');
+        document.getElementById('progress-label').textContent = `Error: ${event.error}`;
+        break;
+    }
+  }
+
+  function renderModules() {
+    const icons = { pending: '○', running: '◉', done: '✓', error: '✕' };
+    document.getElementById('module-list').innerHTML = MODULES_DEF.map(m => {
+      const state = moduleStates[m] || 'pending';
+      return `<div class="module-item ${state}">
+        <span class="module-icon">${icons[state]}</span>
+        <span class="module-name">${m}</span>
+        <span class="module-status">${state === 'running' ? 'scanning...' : state}</span>
+      </div>`;
+    }).join('');
+  }
+
+  const SEV_W = { CRITICAL: 5, HIGH: 4, MEDIUM: 3, LOW: 2, INFO: 1 };
+
+  function renderFindings() {
+    const filtered = activeFilter === 'ALL' ? findings : findings.filter(f => f.severity === activeFilter);
+    const sorted = [...filtered].sort((a, b) =>
+      (SEV_W[b.severity] - SEV_W[a.severity]) || (b.cvss - a.cvss));
+
+    if (!sorted.length) {
+      document.getElementById('findings-list').innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">◎</div>
+          <div class="empty-title">${activeFilter === 'ALL' ? 'Waiting for results' : 'No findings for this severity'}</div>
+          <div class="empty-sub">${activeFilter === 'ALL' ? 'Findings will appear here as modules complete.' : 'Try a different filter.'}</div>
+        </div>`;
+      return;
+    }
+
+    document.getElementById('findings-list').innerHTML = sorted.map((f, i) => `
+      <div class="finding-card" id="fc-${i}" onclick="toggleFinding(${i})">
+        <div class="finding-header">
+          ${sevBadge(f.severity)}
+          ${f.cvss > 0 ? `<span class="cvss-tag">${f.cvss}</span>` : ''}
+          ${f.confidence ? confidenceBadge(f.confidence) : ''}
+          <span class="finding-title">${escHtml(f.title)}</span>
+          ${f.owasp ? `<span class="owasp-tag" title="${escHtml(f.owasp_name||f.owasp)}">${escHtml(f.owasp)}</span>` : ''}
+          ${f.cwe ? `<span class="cwe-tag">${escHtml(f.cwe)}</span>` : ''}
+          <span class="finding-cat">${escHtml(f.category)}</span>
+          <span class="finding-chevron">▾</span>
+        </div>
+        <div class="finding-body">
+          ${(f.owasp || f.cwe) ? `<div class="finding-section">
+            <div class="finding-section-label">Classification</div>
+            <div class="finding-section-content" style="font-family:inherit">
+              ${f.owasp_name ? escHtml(f.owasp_name) : ''}${f.cwe ? ' · <a href="https://cwe.mitre.org/data/definitions/'+f.cwe.replace('CWE-','')+'.html" target="_blank" style="color:var(--accent2)" onclick="event.stopPropagation()">'+escHtml(f.cwe)+'</a>' : ''}
+              ${f.confidence ? ' · Confidence: <strong>'+escHtml(f.confidence)+'</strong>' : ''}
+            </div>
+          </div>` : ''}
+          <div class="finding-section">
+            <div class="finding-section-label">Description</div>
+            <div class="finding-section-content">${escHtml(f.description)}</div>
+          </div>
+          ${f.evidence ? `<div class="finding-section">
+            <div class="finding-section-label">Evidence</div>
+            <div class="finding-section-content">${escHtml(f.evidence)}</div>
+          </div>` : ''}
+          <div class="finding-section">
+            <div class="finding-section-label">Recommendation</div>
+            <div class="finding-section-content">${escHtml(f.recommendation)}</div>
+          </div>
+          ${f.url ? `<div style="margin-top:0.5rem"><span class="finding-url">${escHtml(f.url)}</span></div>` : ''}
+        </div>
+      </div>
+    `).join('');
+  }
+
+  function renderSummary() {
+    const counts = { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0, INFO: 0 };
+    findings.forEach(f => { counts[f.severity] = (counts[f.severity] || 0) + 1; });
+    document.getElementById('s-crit').textContent = counts.CRITICAL;
+    document.getElementById('s-high').textContent = counts.HIGH;
+    document.getElementById('s-med').textContent  = counts.MEDIUM;
+    document.getElementById('s-low').textContent  = counts.LOW;
+    document.getElementById('summary-card').style.display = 'block';
+  }
+
+  function toggleFinding(i) {
+    document.getElementById(`fc-${i}`).classList.toggle('expanded');
+  }
+
+  function filterFindings(sev, btn) {
+    activeFilter = sev;
+    document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    renderFindings();
+  }
+
+  async function init() {
+    document.getElementById('topbar-status').innerHTML = statusBadge('pending');
+    renderModules();
+    document.getElementById('ai-chat-box').addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendChat();
+    });
+    const alreadyDone = await loadExistingScan();
+    if (!alreadyDone) connectWS();
+  }
+
+  init();
+</script>
+</body>
+</html>

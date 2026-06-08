@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VaultScan</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+<div class="layout">
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">Vault<span>Scan</span></div>
+      <div class="logo-sub">SECURITY SCANNER</div>
+    </div>
+    <nav class="sidebar-nav">
+      <a class="nav-item active" href="/">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M2 2h5v5H2V2zm0 7h5v5H2V9zm7-7h5v5H9V2zm0 7h5v5H9V9z"/></svg>
+        Dashboard
+      </a>
+      <button class="nav-item" onclick="openNewScan()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2z"/></svg>
+        New Scan
+      </button>
+      <button class="nav-item" onclick="openCompare()">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-1.5 0V1.75A.75.75 0 0 1 8 1zM3 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2V4H3zm10 0h-2v8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>
+        Compare
+      </button>
+      <a class="nav-item" href="/domains.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zM3 8a5 5 0 119.9 1H10a.75.75 0 000 1.5h2.3A5 5 0 013 8z"/></svg>
+        Domains
+      </a>
+      <a class="nav-item" href="/monitoring.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 4a.75.75 0 0 1 .75.75V8h2.25a.75.75 0 0 1 0 1.5h-3A.75.75 0 0 1 7.25 8.75v-4A.75.75 0 0 1 8 4z"/></svg>
+        Monitoring
+        <span class="alert-dot" id="nav-alert-dot" style="display:none"></span>
+      </a>
+      <a class="nav-item" href="/account.html">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm0 1.5c-3 0-5.5 1.6-5.5 3.5v1h11v-1c0-1.9-2.5-3.5-5.5-3.5z"/></svg>
+        Account
+      </a>
+      <a class="nav-item" href="/api/docs" target="_blank" style="margin-top:auto">
+        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75A2.75 2.75 0 0 1 5.75 0h7.5a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2H5.75a1.25 1.25 0 0 0 0 2.5h.75a.75.75 0 0 1 0 1.5h-.75A2.75 2.75 0 0 1 3 13.25V2.75z"/></svg>
+        API Docs
+      </a>
+    </nav>
+  </aside>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title">Dashboard</span>
+      <button class="btn btn-primary btn-sm" onclick="openNewScan()">
+        <svg width="12" height="12" viewBox="0 0 16 16" fill="currentColor"><path d="M8 2a.75.75 0 0 1 .75.75v4.5h4.5a.75.75 0 0 1 0 1.5h-4.5v4.5a.75.75 0 0 1-1.5 0v-4.5h-4.5a.75.75 0 0 1 0-1.5h4.5v-4.5A.75.75 0 0 1 8 2z"/></svg>
+        New Scan
+      </button>
+    </div>
+
+    <div class="content">
+      <div class="stats-row">
+        <div class="stat-card"><div class="stat-value" id="stat-total">—</div><div class="stat-label">Total Scans</div></div>
+        <div class="stat-card"><div class="stat-value" id="stat-findings">—</div><div class="stat-label">Total Findings</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--c-crit)" id="stat-crit">—</div><div class="stat-label">Critical</div></div>
+        <div class="stat-card"><div class="stat-value" style="color:var(--c-high)" id="stat-high">—</div><div class="stat-label">High</div></div>
+      </div>
+
+      <div class="card">
+        <div class="section-header" style="margin-bottom:1.2rem">
+          <span class="section-title">Recent Scans</span>
+          <button class="btn btn-ghost btn-sm" onclick="loadScans()">↻ Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Grade</th>
+                <th>Target</th>
+                <th>Status</th>
+                <th>Findings</th>
+                <th>Tags</th>
+                <th>Date</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="scans-body">
+              <tr><td colspan="7" style="text-align:center;color:var(--muted);padding:2rem">Loading...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- New Scan Modal -->
+<div class="modal-overlay" id="new-scan-modal">
+  <div class="modal">
+    <div class="modal-title">New Scan</div>
+    <div id="modal-alert" style="display:none;padding:0.7rem 1rem;background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.3);border-radius:6px;color:var(--c-crit);font-size:0.83rem;margin-bottom:1rem"></div>
+    <div class="form-group">
+      <label>TARGET(S)</label>
+      <textarea id="scan-target" rows="3" placeholder="example.com&#10;another-domain.com" spellcheck="false"></textarea>
+      <div class="input-help">One domain or URL per line. Only test targets you are authorized to scan.</div>
+    </div>
+    <div class="form-group">
+      <label>TAGS <span style="color:var(--muted2)">(optional)</span></label>
+      <input type="text" id="scan-tags" placeholder="client-x, q1-audit" autocomplete="off">
+      <div class="input-help">Comma-separated. Used to organize engagements.</div>
+    </div>
+    <div class="form-group">
+      <label>SCAN MODE</label>
+      <div class="mode-toggle">
+        <button type="button" class="mode-opt active" data-mode="safe" onclick="selectMode('safe')">
+          <span class="mode-name">🛡 Safe</span>
+          <span class="mode-desc">Passive recon + intelligence. No attacks.</span>
+        </button>
+        <button type="button" class="mode-opt" data-mode="aggressive" onclick="selectMode('aggressive')">
+          <span class="mode-name">⚡ Aggressive</span>
+          <span class="mode-desc">Adds active XSS / SQLi / LFI injection.</span>
+        </button>
+      </div>
+      <div id="aggressive-warning" style="display:none;margin-top:0.75rem;padding:0.7rem 0.9rem;background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.35);border-radius:6px;color:var(--c-high);font-size:0.78rem;line-height:1.5">
+        ⚠ <strong>Authorization required.</strong> Aggressive mode sends real attack payloads. Only run it
+        against systems you have explicit written permission to test. Unauthorized scanning may be illegal.
+      </div>
+    </div>
+    <div style="display:flex;gap:0.75rem;justify-content:flex-end;margin-top:1.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('new-scan-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="startScan()" id="start-btn">Start Scan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Compare Modal -->
+<div class="modal-overlay" id="compare-modal">
+  <div class="modal" style="max-width:640px">
+    <div class="modal-title">Compare Scans</div>
+    <div style="display:flex;gap:1rem;margin-bottom:1rem">
+      <div class="form-group" style="flex:1;margin:0">
+        <label>BASELINE</label>
+        <select id="diff-a" class="diff-select"></select>
+      </div>
+      <div class="form-group" style="flex:1;margin:0">
+        <label>COMPARE TO</label>
+        <select id="diff-b" class="diff-select"></select>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-sm" onclick="runDiff()">Compare</button>
+    <div id="diff-result" style="margin-top:1.5rem"></div>
+    <div style="display:flex;justify-content:flex-end;margin-top:1.5rem">
+      <button class="btn btn-ghost" onclick="closeModal('compare-modal')">Close</button>
+    </div>
+  </div>
+</div>
+
+<script src="/static/js/api.js"></script>
+<script>
+  if (!requireAuth()) throw 'no auth';
+  let scans = [];
+  let scanMode = 'safe';
+
+  function selectMode(mode) {
+    scanMode = mode;
+    document.querySelectorAll('.mode-opt').forEach(b =>
+      b.classList.toggle('active', b.dataset.mode === mode));
+    document.getElementById('aggressive-warning').style.display =
+      mode === 'aggressive' ? 'block' : 'none';
+  }
+
+  async function loadScans() {
+    try {
+      scans = await API.get('/api/scans');
+      renderScans();
+      renderStats();
+    } catch (e) {
+      document.getElementById('scans-body').innerHTML =
+        `<tr><td colspan="7" style="text-align:center;color:var(--c-crit)">${e.message}</td></tr>`;
+    }
+  }
+
+  function renderScans() {
+    const body = document.getElementById('scans-body');
+    if (!scans.length) {
+      body.innerHTML = `<tr><td colspan="7">
+        <div class="empty"><div class="empty-icon">⟳</div>
+        <div class="empty-title">No scans yet</div>
+        <div class="empty-sub">Start a new scan to see results here.</div></div>
+      </td></tr>`;
+      return;
+    }
+
+    body.innerHTML = scans.map(s => `
+      <tr>
+        <td>${s.status === 'done' ? gradeBadge(s.risk_grade, s.risk_score) : '<span style="color:var(--muted)">—</span>'}</td>
+        <td style="font-family:'JetBrains Mono',monospace;font-size:0.85rem">${escHtml(s.target)}</td>
+        <td>${statusBadge(s.status)}</td>
+        <td>${sevCounts(s)}</td>
+        <td>${tagChips(s.tags) || '<span style="color:var(--muted2)">—</span>'}</td>
+        <td style="color:var(--muted);font-size:0.82rem">${timeAgo(s.created_at)}</td>
+        <td style="text-align:right;white-space:nowrap">
+          <a href="/scan.html?id=${s.id}" class="btn btn-ghost btn-sm">View →</a>
+          <button class="btn btn-danger btn-sm" onclick="deleteScan(${s.id}, event)" style="margin-left:0.3rem">✕</button>
+        </td>
+      </tr>
+    `).join('');
+  }
+
+  function renderStats() {
+    document.getElementById('stat-total').textContent = scans.length;
+    const totals = scans.reduce((a, s) => ({
+      findings: a.findings + s.critical + s.high + s.medium + s.low + s.info,
+      crit: a.crit + s.critical,
+      high: a.high + s.high,
+    }), { findings: 0, crit: 0, high: 0 });
+    document.getElementById('stat-findings').textContent = totals.findings;
+    document.getElementById('stat-crit').textContent = totals.crit;
+    document.getElementById('stat-high').textContent = totals.high;
+  }
+
+  async function deleteScan(id, e) {
+    e.stopPropagation();
+    if (!confirm('Delete this scan and all its findings?')) return;
+    await API.del(`/api/scans/${id}`);
+    loadScans();
+  }
+
+  function openNewScan() {
+    document.getElementById('new-scan-modal').classList.add('open');
+    setTimeout(() => document.getElementById('scan-target').focus(), 100);
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+    const a = document.getElementById('modal-alert');
+    if (a) a.style.display = 'none';
+  }
+
+  async function startScan() {
+    const raw = document.getElementById('scan-target').value.trim();
+    const tags = document.getElementById('scan-tags').value.trim();
+    if (!raw) return;
+    const targets = raw.split('\n').map(t => t.trim()).filter(Boolean);
+
+    const btn = document.getElementById('start-btn');
+    const alert = document.getElementById('modal-alert');
+    alert.style.display = 'none';
+    btn.disabled = true;
+    btn.textContent = 'Starting...';
+    try {
+      if (targets.length === 1) {
+        const scan = await API.post('/api/scans', { target: targets[0], tags, mode: scanMode });
+        window.location.href = `/scan.html?id=${scan.id}`;
+      } else {
+        await API.post('/api/scans/batch', { targets, tags, mode: scanMode });
+        closeModal('new-scan-modal');
+        document.getElementById('scan-target').value = '';
+        loadScans();
+      }
+    } catch (e) {
+      alert.textContent = e.message;
+      alert.style.display = 'block';
+    } finally {
+      btn.disabled = false;
+      btn.textContent = 'Start Scan';
+    }
+  }
+
+  // ── Compare ──
+  function openCompare() {
+    const done = scans.filter(s => s.status === 'done');
+    const opts = done.map(s => `<option value="${s.id}">#${s.id} · ${escHtml(s.target)} (${s.risk_grade})</option>`).join('');
+    document.getElementById('diff-a').innerHTML = opts;
+    document.getElementById('diff-b').innerHTML = opts;
+    if (done.length > 1) document.getElementById('diff-b').selectedIndex = 1;
+    document.getElementById('diff-result').innerHTML = '';
+    document.getElementById('compare-modal').classList.add('open');
+  }
+
+  async function runDiff() {
+    const a = document.getElementById('diff-a').value;
+    const b = document.getElementById('diff-b').value;
+    if (!a || !b) return;
+    try {
+      const d = await API.get(`/api/scans/${a}/diff/${b}`);
+      const deltaColor = d.risk_delta > 0 ? 'var(--c-crit)' : d.risk_delta < 0 ? 'var(--c-ok)' : 'var(--muted)';
+      const deltaSign = d.risk_delta > 0 ? '+' : '';
+      document.getElementById('diff-result').innerHTML = `
+        <div style="margin-bottom:1rem;font-size:0.85rem">
+          Risk change: <strong style="color:${deltaColor}">${deltaSign}${d.risk_delta}</strong>
+          (${d.base.risk_score} → ${d.compare.risk_score})
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:0.75rem">
+          <div class="diff-col">
+            <div style="font-size:0.75rem;color:var(--c-ok);font-weight:600;margin-bottom:0.5rem">✓ RESOLVED (${d.resolved.length})</div>
+            ${d.resolved.map(t => `<div class="diff-item diff-resolved">${escHtml(t)}</div>`).join('') || '<div style="color:var(--muted2);font-size:0.8rem">None</div>'}
+          </div>
+          <div class="diff-col">
+            <div style="font-size:0.75rem;color:var(--c-crit);font-weight:600;margin-bottom:0.5rem">+ NEW (${d.introduced.length})</div>
+            ${d.introduced.map(t => `<div class="diff-item diff-introduced">${escHtml(t)}</div>`).join('') || '<div style="color:var(--muted2);font-size:0.8rem">None</div>'}
+          </div>
+          <div class="diff-col">
+            <div style="font-size:0.75rem;color:var(--muted);font-weight:600;margin-bottom:0.5rem">= PERSISTENT (${d.persistent.length})</div>
+            ${d.persistent.slice(0,8).map(t => `<div class="diff-item diff-persistent">${escHtml(t)}</div>`).join('') || '<div style="color:var(--muted2);font-size:0.8rem">None</div>'}
+          </div>
+        </div>`;
+    } catch (e) {
+      document.getElementById('diff-result').innerHTML = `<div style="color:var(--c-crit)">${e.message}</div>`;
+    }
+  }
+
+  document.getElementById('scan-target').addEventListener('keydown', e => {
+    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) startScan();
+  });
+
+  ['new-scan-modal', 'compare-modal'].forEach(id => {
+    document.getElementById(id).addEventListener('click', e => {
+      if (e.target.id === id) closeModal(id);
+    });
+  });
+
+  async function checkAlerts() {
+    try {
+      const { count } = await API.get('/api/alerts/unread_count');
+      document.getElementById('nav-alert-dot').style.display = count > 0 ? 'block' : 'none';
+    } catch {}
+  }
+
+  loadScans();
+  checkAlerts();
+  setInterval(loadScans, 8000);
+  setInterval(checkAlerts, 12000);
+</script>
+<style>
+  .diff-select { width: 100%; background: var(--surface2); border: 1px solid var(--border2); border-radius: 6px; padding: 0.55rem 0.7rem; color: var(--text); font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; }
+  .diff-select:focus { outline: none; border-color: var(--accent); }
+</style>
+</body>
+</html>

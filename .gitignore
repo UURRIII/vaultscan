@@ -1,0 +1,14 @@
+# Secrets & local config
+.env
+.claude/
+
+# Database (contains real scan data + credentials — never commit)
+*.db
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+
+# OS / editor
+.DS_Store
