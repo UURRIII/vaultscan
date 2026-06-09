@@ -1,10 +1,10 @@
 # 🛡️ VaultScan
 
-**A multi-tenant web security scanning platform** — OSINT reconnaissance, 37 vulnerability detection modules, a local-AI security analyst, OWASP/CWE classification, continuous monitoring, and domain-ownership verification.
+**A web security scanning platform** — OSINT reconnaissance, 37 vulnerability detection modules, a local-AI security analyst, OWASP/CWE classification, and continuous monitoring.
 
-Built as a portfolio project to demonstrate full-stack engineering, security tooling, and SaaS architecture.
+Built as a portfolio project to demonstrate full-stack engineering and security tooling.
 
-> ⚠️ **Authorized use only.** VaultScan enforces **domain-ownership verification** — you can only scan domains you've proven you control (via DNS TXT or a `.well-known` file). Active/aggressive testing requires an explicit opt-in. Never scan systems you don't own or aren't authorized to test.
+> ⚠️ **Authorized use only.** Active/aggressive testing sends real attack payloads. Only scan systems you own or have explicit written permission to test. Unauthorized scanning may be illegal.
 
 ---
 
@@ -15,7 +15,7 @@ Built as a portfolio project to demonstrate full-stack engineering, security too
 - **OSINT** — WHOIS, DNS (AXFR, CAA, DNSSEC, SPF/DMARC), SSL/TLS versions & ciphers, subdomain enumeration (CT logs + brute, wildcard-aware), tech fingerprinting, email harvesting
 - **Scanner** — security headers, cookies, ports (DB/service exposure), subdomain takeover, CMS + version (WP user-enum/xmlrpc), WAF, HTTP methods, CSRF, clickjacking (+PoC), GraphQL introspection, outdated JS libraries (retire.js-style), JWT analysis, directory & sensitive-file discovery (soft-404 guarded), robots/sitemap, CORS, open redirect, JS secrets
 - **Intelligence** — software-version → known-CVE matching
-- **Active (opt-in, Pro)** — reflected XSS, error-based SQLi, LFI/path traversal, SSRF (cloud-metadata), CRLF, host-header injection, IDOR, default credentials
+- **Active (opt-in, aggressive mode)** — reflected XSS, error-based SQLi, LFI/path traversal, SSRF (cloud-metadata), CRLF, host-header injection, IDOR, default credentials
 
 ### 🤖 AI Security Analyst — runs locally, free, private
 A local LLM (via [Ollama](https://ollama.com)) turns raw findings into an **executive summary, prioritized risks, and a remediation plan**, plus a chat to ask questions about the scan. No API key, no cost, and **your audit data never leaves the machine**.
@@ -29,8 +29,8 @@ A local LLM (via [Ollama](https://ollama.com)) turns raw findings into an **exec
 ### 📡 Continuous monitoring
 Schedule recurring scans (hourly/daily/weekly) and get **alerts** when a new finding appears or the risk score rises.
 
-### 🔐 SaaS-ready
-Multi-tenant accounts (JWT auth), per-user data isolation, **domain-ownership verification** (the legal gate), and **Free / Pro plans** with enforced limits.
+### 🛡️ Safe vs Aggressive modes
+**Safe** runs passive recon + intelligence only. **Aggressive** adds active injection tests (XSS, SQLi, SSRF…) — off by default, with an authorization warning.
 
 ---
 
@@ -43,7 +43,7 @@ docker compose up --build
 # then pull the AI model (one-off):
 docker compose exec ollama ollama pull llama3.1:8b
 ```
-Open **http://localhost:8080** — register an account and add a domain to verify.
+Open **http://localhost:8080** and start scanning.
 
 ### Option B — Local (macOS / Linux)
 ```bash
@@ -51,18 +51,15 @@ bash start.sh          # creates a venv, installs deps, runs the server
 # AI Analyst (optional): brew install --cask ollama-app && ollama serve && ollama pull llama3.1:8b
 ```
 
-Default admin (first run, change it): `admin@vaultscan.local` / `changeme123`.
-
 ---
 
 ## 🏗️ Architecture
 
 ```
 Frontend (vanilla JS, dark UI)         Backend (FastAPI)
-  ├─ login / dashboard / scan            ├─ JWT auth + multi-tenancy
-  ├─ domains (ownership verify)          ├─ ScanContext → 37 modules (engine.py)
+  ├─ dashboard / scan (live)             ├─ ScanContext → 37 modules (engine.py)
   ├─ monitoring (schedules/alerts)       ├─ background scheduler (asyncio)
-  └─ account (plans)                     ├─ taxonomy: OWASP + CWE + confidence
+  └─                                     ├─ taxonomy: OWASP + CWE + confidence
         │  REST + WebSocket + SSE         ├─ AI Analyst → Ollama (SSE stream)
         └──────────────────────────────► └─ SQLite (SQLAlchemy)
 ```
@@ -79,14 +76,13 @@ Frontend (vanilla JS, dark UI)         Backend (FastAPI)
 | Realtime | WebSocket (live scan), Server-Sent Events (AI stream) |
 | AI | Ollama (local LLM, `llama3.1:8b`) |
 | Frontend | Vanilla JS, custom CSS (no framework), marked.js |
-| Auth | JWT (python-jose) + pbkdf2_sha256 (passlib) |
 | Deploy | Docker + docker-compose |
 
 ---
 
 ## 🔒 Responsible use
 
-VaultScan is a defensive/authorized-testing tool. It will **refuse to scan a domain you haven't verified you own**, and active exploitation modules are off by default. You are responsible for having written authorization before testing any system. Unauthorized scanning may be illegal in your jurisdiction.
+VaultScan is a defensive/authorized-testing tool. Active exploitation modules are off by default (Safe mode). You are responsible for having written authorization before testing any system. Unauthorized scanning may be illegal in your jurisdiction.
 
 ---
 

@@ -46,8 +46,7 @@ async def _run_one(schedule_id: int):
             return
 
         tags = ",".join(t for t in [sched.tags, "scheduled"] if t).strip(",")
-        scan = Scan(target=sched.target, mode=sched.mode, tags=tags, status="pending",
-                    user_id=sched.user_id)
+        scan = Scan(target=sched.target, mode=sched.mode, tags=tags, status="pending")
         db.add(scan)
         db.commit()
         db.refresh(scan)
@@ -109,7 +108,5 @@ def _make_alerts(db, sched, scan_id: int):
 
 
 def _alert(db, scan_id, schedule_id, target, level, message):
-    sched = db.get(Schedule, schedule_id)
-    db.add(Alert(scan_id=scan_id, schedule_id=schedule_id, target=target, level=level,
-                 message=message, user_id=sched.user_id if sched else None))
+    db.add(Alert(scan_id=scan_id, schedule_id=schedule_id, target=target, level=level, message=message))
     db.commit()

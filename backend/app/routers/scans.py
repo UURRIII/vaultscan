@@ -1,17 +1,13 @@
 import asyncio
-from datetime import datetime, timedelta
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.scan import Scan, Finding, User, VerifiedDomain
+from app.models.scan import Scan, Finding
 from app.schemas.scan import (
     ScanCreate, MultiScanCreate, ScanUpdate, ScanOut, ScanSummary,
 )
 from app.services import engine
 from app.routers.ws import scan_queues
-from app.auth import get_current_user
-from app.routers.auth import PLAN_LIMITS
-from app.core.context import normalize
 
 router = APIRouter(prefix="/api/scans", tags=["scans"])
 
@@ -32,61 +28,19 @@ def _summary(scan: Scan) -> ScanSummary:
     )
 
 
-def _owned(scan_id: int, user: User, db: Session) -> Scan:
-    scan = db.get(Scan, scan_id)
-    if not scan or (scan.user_id != user.id and not user.is_admin):
-        raise HTTPException(status_code=404, detail="Scan not found")
-    return scan
-
-
-def _enforce_scan_policy(user: User, target: str, mode: str, db: Session):
-    """Domain-ownership gate + plan limits. Admins bypass the ownership check."""
-    limits = PLAN_LIMITS.get(user.plan, PLAN_LIMITS["free"])
-
-    if mode == "aggressive" and not limits["aggressive"]:
-        raise HTTPException(status_code=403,
-                            detail="Aggressive scans require the Pro plan. Upgrade to enable active testing.")
-
-    # Daily scan quota.
-    since = datetime.utcnow() - timedelta(days=1)
-    today = db.query(Scan).filter(Scan.user_id == user.id, Scan.created_at >= since).count()
-    if today >= limits["scans_per_day"]:
-        raise HTTPException(status_code=429,
-                            detail=f"Daily scan limit reached ({limits['scans_per_day']}/day on the {user.plan} plan).")
-
-    # Domain ownership — the legal gate.
-    if user.is_admin:
-        return
-    _, host, _ = normalize(target)
-    verified = {d.domain.lower() for d in
-                db.query(VerifiedDomain).filter(VerifiedDomain.user_id == user.id,
-                                                VerifiedDomain.verified == 1).all()}
-    if not any(host == d or host.endswith("." + d) for d in verified):
-        raise HTTPException(
-            status_code=403,
-            detail=f"Domain '{host}' is not verified. Verify ownership under Domains before scanning it.",
-        )
-
-
 @router.get("", response_model=list[ScanSummary])
-def list_scans(user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    q = db.query(Scan)
-    if not user.is_admin:
-        q = q.filter(Scan.user_id == user.id)
-    scans = q.order_by(Scan.created_at.desc()).limit(100).all()
+def list_scans(db: Session = Depends(get_db)):
+    scans = db.query(Scan).order_by(Scan.created_at.desc()).limit(100).all()
     return [_summary(s) for s in scans]
 
 
 @router.post("", response_model=ScanOut, status_code=201)
-def create_scan(body: ScanCreate, background_tasks: BackgroundTasks,
-                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_scan(body: ScanCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     target = body.target.strip().rstrip("/")
     if not target:
         raise HTTPException(status_code=400, detail="Target is required")
     mode = "aggressive" if body.mode == "aggressive" else "safe"
-    _enforce_scan_policy(user, target, mode, db)
-
-    scan = Scan(target=target, status="pending", tags=body.tags, mode=mode, user_id=user.id)
+    scan = Scan(target=target, status="pending", tags=body.tags, mode=mode)
     db.add(scan)
     db.commit()
     db.refresh(scan)
@@ -97,16 +51,14 @@ def create_scan(body: ScanCreate, background_tasks: BackgroundTasks,
 
 
 @router.post("/batch", response_model=list[ScanSummary], status_code=201)
-def create_batch(body: MultiScanCreate, background_tasks: BackgroundTasks,
-                 user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+def create_batch(body: MultiScanCreate, background_tasks: BackgroundTasks, db: Session = Depends(get_db)):
     created = []
     mode = "aggressive" if body.mode == "aggressive" else "safe"
     for raw in body.targets:
         target = raw.strip().rstrip("/")
         if not target:
             continue
-        _enforce_scan_policy(user, target, mode, db)
-        scan = Scan(target=target, status="pending", tags=body.tags, mode=mode, user_id=user.id)
+        scan = Scan(target=target, status="pending", tags=body.tags, mode=mode)
         db.add(scan)
         db.commit()
         db.refresh(scan)
@@ -117,14 +69,18 @@ def create_batch(body: MultiScanCreate, background_tasks: BackgroundTasks,
 
 
 @router.get("/{scan_id}", response_model=ScanOut)
-def get_scan(scan_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    return _owned(scan_id, user, db)
+def get_scan(scan_id: int, db: Session = Depends(get_db)):
+    scan = db.get(Scan, scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
+    return scan
 
 
 @router.patch("/{scan_id}", response_model=ScanOut)
-def update_scan(scan_id: int, body: ScanUpdate,
-                user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    scan = _owned(scan_id, user, db)
+def update_scan(scan_id: int, body: ScanUpdate, db: Session = Depends(get_db)):
+    scan = db.get(Scan, scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
     if body.tags is not None:
         scan.tags = body.tags
     if body.notes is not None:
@@ -135,17 +91,20 @@ def update_scan(scan_id: int, body: ScanUpdate,
 
 
 @router.delete("/{scan_id}", status_code=204)
-def delete_scan(scan_id: int, user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    scan = _owned(scan_id, user, db)
+def delete_scan(scan_id: int, db: Session = Depends(get_db)):
+    scan = db.get(Scan, scan_id)
+    if not scan:
+        raise HTTPException(status_code=404, detail="Scan not found")
     db.delete(scan)
     db.commit()
 
 
 @router.get("/{scan_id}/diff/{other_id}")
-def diff_scans(scan_id: int, other_id: int,
-               user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    a = _owned(scan_id, user, db)
-    b = _owned(other_id, user, db)
+def diff_scans(scan_id: int, other_id: int, db: Session = Depends(get_db)):
+    a = db.get(Scan, scan_id)
+    b = db.get(Scan, other_id)
+    if not a or not b:
+        raise HTTPException(status_code=404, detail="Scan not found")
 
     def key(f):
         return (f.title, f.url)

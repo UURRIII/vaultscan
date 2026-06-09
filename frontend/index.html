@@ -26,18 +26,10 @@
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-1.5 0V1.75A.75.75 0 0 1 8 1zM3 4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h2V4H3zm10 0h-2v8h2a1 1 0 0 0 1-1V5a1 1 0 0 0-1-1z"/></svg>
         Compare
       </button>
-      <a class="nav-item" href="/domains.html">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 0a8 8 0 100 16A8 8 0 008 0zM3 8a5 5 0 119.9 1H10a.75.75 0 000 1.5h2.3A5 5 0 013 8z"/></svg>
-        Domains
-      </a>
       <a class="nav-item" href="/monitoring.html">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 1.5a6.5 6.5 0 1 0 0 13 6.5 6.5 0 0 0 0-13zM8 4a.75.75 0 0 1 .75.75V8h2.25a.75.75 0 0 1 0 1.5h-3A.75.75 0 0 1 7.25 8.75v-4A.75.75 0 0 1 8 4z"/></svg>
         Monitoring
         <span class="alert-dot" id="nav-alert-dot" style="display:none"></span>
-      </a>
-      <a class="nav-item" href="/account.html">
-        <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M8 8a3 3 0 100-6 3 3 0 000 6zm0 1.5c-3 0-5.5 1.6-5.5 3.5v1h11v-1c0-1.9-2.5-3.5-5.5-3.5z"/></svg>
-        Account
       </a>
       <a class="nav-item" href="/api/docs" target="_blank" style="margin-top:auto">
         <svg class="nav-icon" viewBox="0 0 16 16" fill="currentColor"><path d="M3 2.75A2.75 2.75 0 0 1 5.75 0h7.5a.75.75 0 0 1 .75.75v12.5a.75.75 0 0 1-.75.75h-2.5a.75.75 0 0 1 0-1.5h1.75v-2H5.75a1.25 1.25 0 0 0 0 2.5h.75a.75.75 0 0 1 0 1.5h-.75A2.75 2.75 0 0 1 3 13.25V2.75z"/></svg>
@@ -154,7 +146,6 @@
 
 <script src="/static/js/api.js"></script>
 <script>
-  if (!requireAuth()) throw 'no auth';
   let scans = [];
   let scanMode = 'safe';
 

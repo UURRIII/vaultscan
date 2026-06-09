@@ -1,46 +1,24 @@
 const API = {
-  token() { return localStorage.getItem('vs_token'); },
-  setToken(t) { localStorage.setItem('vs_token', t); },
-  clearToken() { localStorage.removeItem('vs_token'); },
-  authHeaders(extra) {
-    const h = extra || {};
-    const t = this.token();
-    if (t) h['Authorization'] = 'Bearer ' + t;
-    return h;
-  },
-  _check(r) {
-    if (r.status === 401) { API.clearToken(); if (!location.pathname.endsWith('login.html')) location.href = '/login.html'; throw new Error('Not authenticated'); }
-  },
   async get(path) {
-    const r = await fetch(path, { headers: this.authHeaders() });
-    this._check(r);
+    const r = await fetch(path);
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Request failed');
     return r.json();
   },
   async post(path, body) {
-    const r = await fetch(path, { method: 'POST', headers: this.authHeaders({ 'Content-Type': 'application/json' }), body: JSON.stringify(body) });
-    this._check(r);
+    const r = await fetch(path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Request failed');
     return r.json();
   },
   async del(path) {
-    const r = await fetch(path, { method: 'DELETE', headers: this.authHeaders() });
-    this._check(r);
+    const r = await fetch(path, { method: 'DELETE' });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Request failed');
   },
   async patch(path, body) {
-    const r = await fetch(path, { method: 'PATCH', headers: this.authHeaders({ 'Content-Type': 'application/json' }), body: body ? JSON.stringify(body) : undefined });
-    this._check(r);
+    const r = await fetch(path, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: body ? JSON.stringify(body) : undefined });
     if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || 'Request failed');
     return r.json().catch(() => ({}));
   },
 };
-
-// Redirect to login if not authenticated (call at the top of gated pages).
-function requireAuth() {
-  if (!API.token()) { location.href = '/login.html'; return false; }
-  return true;
-}
 
 const SEV_ORDER = ['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'INFO'];
 const GRADE_COLOR = { A: '#22c55e', B: '#84cc16', C: '#eab308', D: '#f97316', F: '#ef4444' };

@@ -156,7 +156,6 @@ ollama pull llama3.1:8b</pre>
 <script src="https://cdn.jsdelivr.net/npm/marked@12.0.0/marked.min.js"></script>
 <script src="/static/js/api.js"></script>
 <script>
-  if (!requireAuth()) throw 'no auth';
   const scanId = new URLSearchParams(location.search).get('id');
   if (!scanId) location.href = '/';
 
@@ -180,10 +179,9 @@ ollama pull llama3.1:8b</pre>
   MODULES_DEF.forEach(m => { moduleStates[m] = 'pending'; });
 
   function showExports() {
-    const t = encodeURIComponent(API.token() || '');
-    document.getElementById('report-btn').href = `/api/scans/${scanId}/report?token=${t}`;
-    document.getElementById('json-btn').href = `/api/scans/${scanId}/export.json?token=${t}`;
-    document.getElementById('csv-btn').href = `/api/scans/${scanId}/export.csv?token=${t}`;
+    document.getElementById('report-btn').href = `/api/scans/${scanId}/report`;
+    document.getElementById('json-btn').href = `/api/scans/${scanId}/export.json`;
+    document.getElementById('csv-btn').href = `/api/scans/${scanId}/export.csv`;
     ['report-btn', 'json-btn', 'csv-btn'].forEach(id =>
       document.getElementById(id).style.display = 'inline-flex');
   }
@@ -213,7 +211,7 @@ ollama pull llama3.1:8b</pre>
   async function streamSSE(url, body, onEvent) {
     const res = await fetch(url, {
       method: 'POST',
-      headers: API.authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body || {}),
     });
     if (!res.ok || !res.body) throw new Error('Stream failed');

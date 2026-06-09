@@ -10,6 +10,3 @@ beautifulsoup4==4.12.3
 python-multipart==0.0.12
 # AI Analyst runs locally via Ollama (http://localhost:11434) — no SDK needed, uses httpx.
 python-dotenv==1.0.1
-python-jose[cryptography]==3.3.0
-passlib==1.7.4
-email-validator==2.2.0

@@ -24,7 +24,6 @@ def run_lightweight_migrations() -> None:
             ("risk_grade", "VARCHAR DEFAULT ''"),
             ("tags", "VARCHAR DEFAULT ''"),
             ("notes", "TEXT DEFAULT ''"),
-            ("user_id", "INTEGER"),
         ],
         "findings": [
             ("cvss", "FLOAT DEFAULT 0.0"),
@@ -32,8 +31,6 @@ def run_lightweight_migrations() -> None:
             ("cwe", "VARCHAR DEFAULT ''"),
             ("confidence", "VARCHAR DEFAULT ''"),
         ],
-        "schedules": [("user_id", "INTEGER")],
-        "alerts": [("user_id", "INTEGER")],
     }
     insp = inspect(engine)
     existing_tables = insp.get_table_names()

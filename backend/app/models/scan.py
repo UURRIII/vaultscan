@@ -4,35 +4,10 @@ from sqlalchemy.orm import relationship
 from app.database import Base
 
 
-class User(Base):
-    __tablename__ = "users"
-
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    plan = Column(String, default="free")       # free | pro
-    is_admin = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-
-
-class VerifiedDomain(Base):
-    __tablename__ = "verified_domains"
-
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    domain = Column(String, nullable=False)
-    token = Column(String, nullable=False)
-    method = Column(String, default="")         # dns | file
-    verified = Column(Integer, default=0)
-    created_at = Column(DateTime, default=datetime.utcnow)
-    verified_at = Column(DateTime, nullable=True)
-
-
 class Scan(Base):
     __tablename__ = "scans"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     target = Column(String, nullable=False)
     status = Column(String, default="pending")  # pending | running | done | error
     mode = Column(String, default="safe")       # safe | aggressive
@@ -50,7 +25,6 @@ class Schedule(Base):
     __tablename__ = "schedules"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     target = Column(String, nullable=False)
     mode = Column(String, default="safe")
     tags = Column(String, default="")
@@ -65,7 +39,6 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
     scan_id = Column(Integer, ForeignKey("scans.id"), nullable=True)
     schedule_id = Column(Integer, ForeignKey("schedules.id"), nullable=True)
     target = Column(String, default="")

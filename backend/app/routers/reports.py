@@ -5,26 +5,25 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import HTMLResponse, StreamingResponse, JSONResponse
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.models.scan import Scan, User
+from app.models.scan import Scan
 from app.core.risk import compute_risk
 from app.reporting.html_report import render_report
-from app.auth import get_user_flexible
 
 router = APIRouter(prefix="/api/scans", tags=["reports"])
 
 SEV_ORDER = {"CRITICAL": 5, "HIGH": 4, "MEDIUM": 3, "LOW": 2, "INFO": 1}
 
 
-def _load(scan_id: int, db: Session, user: User) -> Scan:
+def _load(scan_id: int, db: Session) -> Scan:
     scan = db.get(Scan, scan_id)
-    if not scan or (scan.user_id != user.id and not user.is_admin):
+    if not scan:
         raise HTTPException(status_code=404, detail="Scan not found")
     return scan
 
 
 @router.get("/{scan_id}/report", response_class=HTMLResponse)
-def html_report(scan_id: int, user: User = Depends(get_user_flexible), db: Session = Depends(get_db)):
-    scan = _load(scan_id, db, user)
+def html_report(scan_id: int, db: Session = Depends(get_db)):
+    scan = _load(scan_id, db)
     findings = sorted(scan.findings, key=lambda f: (-SEV_ORDER.get(f.severity, 0), -f.cvss))
     counts = {k: 0 for k in SEV_ORDER}
     for f in scan.findings:
@@ -34,8 +33,8 @@ def html_report(scan_id: int, user: User = Depends(get_user_flexible), db: Sessi
 
 
 @router.get("/{scan_id}/export.json")
-def export_json(scan_id: int, user: User = Depends(get_user_flexible), db: Session = Depends(get_db)):
-    scan = _load(scan_id, db, user)
+def export_json(scan_id: int, db: Session = Depends(get_db)):
+    scan = _load(scan_id, db)
     data = {
         "target": scan.target,
         "status": scan.status,
@@ -62,8 +61,8 @@ def export_json(scan_id: int, user: User = Depends(get_user_flexible), db: Sessi
 
 
 @router.get("/{scan_id}/export.csv")
-def export_csv(scan_id: int, user: User = Depends(get_user_flexible), db: Session = Depends(get_db)):
-    scan = _load(scan_id, db, user)
+def export_csv(scan_id: int, db: Session = Depends(get_db)):
+    scan = _load(scan_id, db)
     buf = io.StringIO()
     writer = csv.writer(buf)
     writer.writerow(["Severity", "CVSS", "Confidence", "OWASP", "CWE", "Title", "Category", "URL", "Description", "Recommendation"])
